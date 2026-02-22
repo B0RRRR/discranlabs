@@ -15,42 +15,48 @@ struct Entry {
     uint16_t value_len;
 };
 
-struct EntryArray {
+class EntryArray {
+public:
     Entry* data;
     size_t size;
     size_t capacity;
+
+    EntryArray() {
+        data = (Entry*)malloc(INITIAL_CAPACITY * sizeof(Entry));
+        size = 0;
+        capacity = INITIAL_CAPACITY;
+    }
+
+    ~EntryArray() {
+        for (size_t i = 0; i < size; ++i) {
+            free(data[i].key_str);
+            free(data[i].value);
+        }
+        free(data);
+    }
+
+    void push(uint32_t key, char* key_str, uint16_t key_str_len,
+              char* value, uint16_t value_len) {
+        if (size >= capacity) {
+            reserve(capacity * 2);
+        }
+        Entry entry;
+        entry.key = key;
+        entry.key_str = key_str;
+        entry.key_str_len = key_str_len;
+        entry.value = value;
+        entry.value_len = value_len;
+        data[size++] = entry;
+    }
+
+private:
+    void reserve(size_t new_capacity) {
+        if (new_capacity <= capacity) return;
+        Entry* new_data = (Entry*)realloc(data, new_capacity * sizeof(Entry));
+        data = new_data;
+        capacity = new_capacity;
+    }
 };
-
-void EntryArray_init(EntryArray* arr) {
-    arr->data = (Entry*)malloc(INITIAL_CAPACITY * sizeof(Entry));
-    arr->size = 0;
-    arr->capacity = INITIAL_CAPACITY;
-}
-
-void EntryArray_reserve(EntryArray* arr, size_t new_capacity) {
-    if (new_capacity <= arr->capacity) return;
-    Entry* new_data = (Entry*)realloc(arr->data, new_capacity * sizeof(Entry));
-    arr->data = new_data;
-    arr->capacity = new_capacity;
-}
-
-void EntryArray_push(EntryArray* arr, Entry entry) {
-    if (arr->size >= arr->capacity) {
-        EntryArray_reserve(arr, arr->capacity * 2);
-    }
-    arr->data[arr->size++] = entry;
-}
-
-void EntryArray_free(EntryArray* arr) {
-    for (size_t i = 0; i < arr->size; ++i) {
-        free(arr->data[i].key_str);
-        free(arr->data[i].value);
-    }
-    free(arr->data);
-    arr->data = NULL;
-    arr->size = 0;
-    arr->capacity = 0;
-}
 
 void counting_sort(EntryArray* arr) {
     if (arr->size == 0) return;
@@ -88,8 +94,6 @@ void counting_sort(EntryArray* arr) {
 
 int main() {
     EntryArray entries;
-    EntryArray_init(&entries);
-
     char line[LINE_BUFFER_SIZE];
 
     while (fgets(line, sizeof(line), stdin)) {
@@ -113,33 +117,25 @@ int main() {
 
         if (val_len > MAX_VALUE_LEN) continue;
 
-        Entry entry;
-        entry.key = key;
-        entry.key_str_len = tab_pos - line;
-        entry.key_str = (char*)malloc(entry.key_str_len + 1);
-        memcpy(entry.key_str, line, entry.key_str_len);
-        entry.key_str[entry.key_str_len] = '\0';
+        char* key_str = (char*)malloc(tab_pos - line + 1);
+        memcpy(key_str, line, tab_pos - line);
+        key_str[tab_pos - line] = '\0';
 
-        entry.value_len = val_len;
-        entry.value = (char*)malloc(val_len + 1);
-        memcpy(entry.value, val, val_len);
-        entry.value[val_len] = '\0';
+        char* value = (char*)malloc(val_len + 1);
+        memcpy(value, val, val_len);
+        value[val_len] = '\0';
 
-        EntryArray_push(&entries, entry);
+        entries.push(key, key_str, tab_pos - line, value, val_len);
     }
 
-    if (entries.size > 0) {
-        counting_sort(&entries);
+    counting_sort(&entries);
 
-        for (size_t i = 0; i < entries.size; ++i) {
-            fwrite(entries.data[i].key_str, 1, entries.data[i].key_str_len, stdout);
-            fputc('\t', stdout);
-            fwrite(entries.data[i].value, 1, entries.data[i].value_len, stdout);
-            fputc('\n', stdout);
-        }
+    for (size_t i = 0; i < entries.size; ++i) {
+        fwrite(entries.data[i].key_str, 1, entries.data[i].key_str_len, stdout);
+        fputc('\t', stdout);
+        fwrite(entries.data[i].value, 1, entries.data[i].value_len, stdout);
+        fputc('\n', stdout);
     }
-
-    EntryArray_free(&entries);
 
     return 0;
 }
