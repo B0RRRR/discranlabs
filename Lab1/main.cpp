@@ -76,15 +76,14 @@ void counting_sort(EntryArray* arr) {
 
     uint32_t total = 0;
     for (size_t i = 0; i <= max_val; ++i) {
-        uint32_t c = count[i];
+        total += count[i];
         count[i] = total;
-        total += c;
     }
 
     Entry* result = (Entry*)malloc(arr->size * sizeof(Entry));
-    for (size_t i = 0; i < arr->size; ++i) {
+    for (ssize_t i = arr->size - 1; i >= 0; --i) {
         uint32_t key = arr->data[i].key;
-        result[count[key]++] = arr->data[i];
+        result[--count[key]] = arr->data[i];
     }
 
     free(arr->data);
