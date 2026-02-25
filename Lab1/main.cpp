@@ -1,7 +1,8 @@
-#include <cstdio>
-#include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
+
+using namespace std;
 
 const int INITIAL_CAPACITY = 1024;
 const int MAX_VALUE_LEN = 2048;
@@ -22,17 +23,17 @@ public:
     size_t capacity;
 
     EntryArray() {
-        data = (Entry*)malloc(INITIAL_CAPACITY * sizeof(Entry));
+        data = new Entry[INITIAL_CAPACITY];
         size = 0;
         capacity = INITIAL_CAPACITY;
     }
 
     ~EntryArray() {
         for (size_t i = 0; i < size; ++i) {
-            free(data[i].key_str);
-            free(data[i].value);
+            delete[] data[i].key_str;
+            delete[] data[i].value;
         }
-        free(data);
+        delete[] data;
     }
 
     void push(uint32_t key, char* key_str, uint16_t key_str_len,
@@ -52,7 +53,11 @@ public:
 private:
     void reserve(size_t new_capacity) {
         if (new_capacity <= capacity) return;
-        Entry* new_data = (Entry*)realloc(data, new_capacity * sizeof(Entry));
+        Entry* new_data = new Entry[new_capacity];
+        for (size_t i = 0; i < size; ++i) {
+            new_data[i] = data[i];
+        }
+        delete[] data;
         data = new_data;
         capacity = new_capacity;
     }
@@ -68,7 +73,7 @@ void counting_sort(EntryArray* arr) {
         }
     }
 
-    uint32_t* count = (uint32_t*)calloc(max_val + 1, sizeof(uint32_t));
+    uint32_t* count = new uint32_t[max_val + 1]();
 
     for (size_t i = 0; i < arr->size; ++i) {
         count[arr->data[i].key]++;
@@ -80,28 +85,26 @@ void counting_sort(EntryArray* arr) {
         count[i] = total;
     }
 
-    Entry* result = (Entry*)malloc(arr->size * sizeof(Entry));
+    Entry* result = new Entry[arr->size];
     for (ssize_t i = arr->size - 1; i >= 0; --i) {
         uint32_t key = arr->data[i].key;
         result[--count[key]] = arr->data[i];
     }
 
-    free(arr->data);
+    delete[] arr->data;
     arr->data = result;
-    free(count);
+    delete[] count;
 }
 
 int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
     EntryArray entries;
     char line[LINE_BUFFER_SIZE];
 
-    while (fgets(line, sizeof(line), stdin)) {
+    while (cin.getline(line, sizeof(line))) {
         size_t len = strlen(line);
-        if (len == 0) continue;
-        if (line[len - 1] == '\n') {
-            line[len - 1] = '\0';
-            len--;
-        }
         if (len == 0) continue;
 
         char* tab_pos = strchr(line, '\t');
@@ -116,11 +119,11 @@ int main() {
 
         if (val_len > MAX_VALUE_LEN) continue;
 
-        char* key_str = (char*)malloc(tab_pos - line + 1);
+        char* key_str = new char[tab_pos - line + 1];
         memcpy(key_str, line, tab_pos - line);
         key_str[tab_pos - line] = '\0';
 
-        char* value = (char*)malloc(val_len + 1);
+        char* value = new char[val_len + 1];
         memcpy(value, val, val_len);
         value[val_len] = '\0';
 
@@ -130,10 +133,10 @@ int main() {
     counting_sort(&entries);
 
     for (size_t i = 0; i < entries.size; ++i) {
-        fwrite(entries.data[i].key_str, 1, entries.data[i].key_str_len, stdout);
-        fputc('\t', stdout);
-        fwrite(entries.data[i].value, 1, entries.data[i].value_len, stdout);
-        fputc('\n', stdout);
+        cout.write(entries.data[i].key_str, entries.data[i].key_str_len);
+        cout.put('\t');
+        cout.write(entries.data[i].value, entries.data[i].value_len);
+        cout.put('\n');
     }
 
     return 0;
